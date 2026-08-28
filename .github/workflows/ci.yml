@@ -1,0 +1,217 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push supersedes the run in flight for the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  # --------------------------------------------------------------- preflight
+  # Secrets cannot be referenced from a job-level `if`, so availability is
+  # resolved once here and published as outputs. This keeps the pipeline green
+  # on a fork or a fresh clone where no secrets are configured: the publish and
+  # deploy jobs skip instead of failing.
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    outputs:
+      has_dockerhub: ${{ steps.check.outputs.has_dockerhub }}
+      has_render: ${{ steps.check.outputs.has_render }}
+      has_database: ${{ steps.check.outputs.has_database }}
+    steps:
+      - id: check
+        run: |
+          {
+            echo "has_dockerhub=${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}"
+            echo "has_render=${{ secrets.RENDER_DEPLOY_HOOK != '' }}"
+            echo "has_database=${{ secrets.DATABASE_URL != '' }}"
+          } >> "$GITHUB_OUTPUT"
+
+  # ------------------------------------------------------------------- gate 1
+  # Cheap and independent. All four run in parallel; anything expensive waits
+  # on them so a formatting slip never burns a browser or Docker build.
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # The app typechecks against the package's built .d.ts, so the package
+      # must be built first -- the packaging cost recorded in ADR-008.
+      - run: pnpm --filter @moderation/data-table build
+      - run: pnpm typecheck
+
+  test-unit:
+    name: Unit tests (node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @moderation/data-table test:node
+
+  db-drift:
+    name: Schema drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # `drizzle-kit check` only validates journal consistency -- it reports
+      # "everything's fine" against a schema edited without a migration
+      # (verified locally). Regenerating and diffing is the gate that actually
+      # catches drift. `generate` is offline and needs no DATABASE_URL.
+      - name: Migrations match schema
+        working-directory: apps/web
+        run: pnpm db:generate
+      - name: Fail if a migration is missing
+        run: |
+          if ! git diff --exit-code --stat apps/web/drizzle; then
+            echo "::error::schema.ts changed without a matching migration. Run 'pnpm --filter @moderation/web db:generate' and commit apps/web/drizzle."
+            exit 1
+          fi
+
+  # ------------------------------------------------------------------- gate 2
+  test-browser:
+    name: Component tests (browser)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Install Chromium
+        run: pnpm --filter @moderation/data-table exec playwright install --with-deps chromium
+      # Real browser, real layout engine. These assertions (column widths,
+      # sticky offsets, computed styles) are impossible under jsdom.
+      - run: pnpm --filter @moderation/data-table test:browser
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: browser-test-failures
+          path: packages/data-table/tests/__screenshots__/
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      # Shared with e2e so the app is compiled once, not twice.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: next-build
+          path: |
+            apps/web/.next/standalone
+            apps/web/.next/static
+          retention-days: 1
+          include-hidden-files: true
+
+  # ------------------------------------------------------------------- gate 3
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    needs: [build]
+    env:
+      # Consume the artifact from `build` rather than recompiling.
+      PW_SKIP_BUILD: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v8
+        with:
+          name: next-build
+          path: apps/web/.next
+      - name: Install Chromium
+        run: pnpm --filter @moderation/web exec playwright install --with-deps chromium
+      # Runs against the standalone server -- byte-for-byte what the Docker
+      # image serves -- not `next start` or the dev server.
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+  # ------------------------------------------------------------------- gate 4
+  docker:
+    name: Publish image
+    runs-on: ubuntu-latest
+    needs: [preflight, test-unit, test-browser, e2e, db-drift]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.preflight.outputs.has_dockerhub == 'true'
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          # Render only runs linux/amd64 images. Explicit so a future runner or
+          # local build cannot silently produce an arm64 image Render rejects.
+          platforms: linux/amd64
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/moderation-queue:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/moderation-queue:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  migrate:
+    name: Migrate production database
+    runs-on: ubuntu-latest
+    needs: [preflight, docker]
+    if: needs.preflight.outputs.has_database == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # Applied before the new image serves traffic, so the running container
+      # never meets a schema it was not built against.
+      - name: Apply migrations
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm db:migrate
+
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: [preflight, docker, migrate]
+    # `always()` lets deploy proceed when `migrate` was skipped for want of a
+    # DATABASE_URL secret, while still blocking on an actual migration failure.
+    if: always() && needs.docker.result == 'success' && needs.migrate.result != 'failure' && needs.preflight.outputs.has_render == 'true'
+    steps:
+      - name: Trigger Render deploy
+        # Image-backed services never redeploy on their own. Passing imgURL
+        # pins the deploy to the exact image this run pushed, rather than
+        # whatever ':latest' points at by the time Render pulls.
+        run: |
+          curl --fail --silent --show-error \
+            --data-urlencode "imgURL=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/moderation-queue:${{ github.sha }}" \
+            --get "${{ secrets.RENDER_DEPLOY_HOOK }}"

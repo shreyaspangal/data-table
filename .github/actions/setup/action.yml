@@ -1,0 +1,18 @@
+name: Setup
+description: Install pnpm, Node and workspace dependencies with a warm store cache.
+
+runs:
+  using: composite
+  steps:
+    # pnpm must be installed before setup-node, otherwise `cache: pnpm`
+    # cannot resolve the store path and the step fails.
+    - uses: pnpm/action-setup@v6
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
