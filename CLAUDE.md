@@ -51,6 +51,13 @@ No step is finished until:
 - No global store. Server data → TanStack Query. Shareable UI state → URL.
   Layout state → component-local.
 
+## Known toolchain traps
+
+`docs/toolchain-gotchas.md` records tools that report success while doing
+nothing useful — `biome migrate` disabling all lint rules, `drizzle-kit check`
+not detecting drift, `next start` silently ignoring standalone output. Read it
+before debugging anything that "passes" suspiciously easily.
+
 ## Conventions
 
 - `packages/data-table` never mentions the domain. No `report`, no
