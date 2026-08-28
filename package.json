@@ -1,0 +1,21 @@
+{
+  "name": "data-table-monorepo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @moderation/web dev",
+    "build": "pnpm -r build",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "e2e": "pnpm --filter @moderation/web e2e"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.10"
+  }
+}

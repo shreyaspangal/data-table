@@ -1,0 +1,38 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# env — never commit
+.env
+.env.*
+!.env.example
+
+# next
+.next/
+out/
+next-env.d.ts
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# test / coverage
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+.lighthouseci/
+
+# os / editor
+.DS_Store
+.idea/
+*.log
+
+# vitest browser-mode failure artifacts
+**/tests/__screenshots__/
+**/.vitest-attachments/
+
+# claude code local overrides
+.claude/settings.local.json
