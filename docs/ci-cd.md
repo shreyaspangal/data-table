@@ -114,18 +114,28 @@ If the Docker Hub repository is private, add the credential under
 Free tier: spins down after 15 minutes idle, ~1 minute cold start, 750 instance
 hours/month. The filesystem is ephemeral — all state lives in Neon.
 
-## Required secrets
+## Required variables and secrets
 
-None are needed for the pipeline to pass. These enable publish and deploy:
+None are needed for the pipeline to pass — publish and deploy skip without
+them. The split follows GitHub's guidance: **variables** for non-sensitive
+config, **secrets** for credentials.
 
-| Secret | Used by | Purpose |
-|---|---|---|
-| `DOCKERHUB_USERNAME` | `docker` | registry login and image namespace |
-| `DOCKERHUB_TOKEN` | `docker` | access token, not the account password |
-| `DATABASE_URL` | `migrate` | production Neon connection string |
-| `RENDER_DEPLOY_HOOK` | `deploy` | Render service deploy hook URL |
+| Name | Kind | Used by | Purpose |
+|---|---|---|---|
+| `DOCKERHUB_USERNAME` | variable | `docker` | registry login and image namespace — public, it appears in the image URL |
+| `DOCKERHUB_TOKEN` | secret | `docker` | access token, not the account password |
+| `DATABASE_URL` | secret | `migrate` | production Neon connection string |
+| `RENDER_DEPLOY_HOOK` | secret | `deploy` | Render deploy hook URL (a capability URL — anyone holding it can trigger a deploy) |
 
-Set with `gh secret set DOCKERHUB_TOKEN`, or in repo Settings → Secrets.
+```sh
+gh variable set DOCKERHUB_USERNAME --body "<user>"
+gh secret set DOCKERHUB_TOKEN
+gh secret set DATABASE_URL
+gh secret set RENDER_DEPLOY_HOOK
+```
+
+Note the asymmetry: `vars` *can* be read from a job-level `if`, secrets
+cannot. The preflight job exists for the secrets half.
 
 ## Not yet wired
 
