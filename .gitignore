@@ -36,3 +36,7 @@ blob-report/
 
 # claude code local overrides
 .claude/settings.local.json
+
+# installed agent skills — personal toolchain, not project source
+.agents/
+skills-lock.json
