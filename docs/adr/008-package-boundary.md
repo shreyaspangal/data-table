@@ -3,8 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-08-28
 - **Step:** 0 (Foundation)
-- **Related:** [ADR-001 (contract)](001-rows-columns-contract.md),
-  [ADR-003 (RSC boundary)](003-rsc-boundary.md)
+- **Related:** ADR-001 (contract, Step 2, not written yet), ADR-003 (RSC
+  boundary, Step 3, not written yet) — forward references, not broken links;
+  filed here as findable once those steps land
 
 ## Context
 

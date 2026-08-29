@@ -19,14 +19,27 @@ packages/data-table/src/types.ts
 packages/data-table/src/resolve-widths.ts
 packages/data-table/src/DataTable.tsx
 packages/data-table/src/DataTable.module.css
+packages/data-table/src/index.ts
+docs/system-design/00-radio.md
+docs/state-architecture.md
+docs/testing-matrix.md
+docs/performance-budget.md
 ```
 
+`index.ts` is included because it *is* the public API surface (see
+Conventions below) — agent-editable would mean the contract isn't actually
+human-decided. The four docs are Steps 1, 2.5, 9, and 10's deliverables per
+the plan — reasoning docs, not scaffolding, even though they're prose. An
+agent may **discuss, question, and research for** these files, exactly as
+with the code above, but not write their content.
+
 Everything else — scaffolding, DB schema and seed, app UI, cell renderers,
-test boilerplate, CI, Docker, docs prose — is fair game.
+test boilerplate, CI, Docker, ADR rejected-options research, setup docs
+like this one — is fair game.
 
 ## Per-step protocol
 
-No step is finished until:
+Every step that makes an architectural decision goes through:
 
 1. **Grill** — the design is stress-tested against how shipped libraries
    (TanStack Table, MUI X Data Grid, AG Grid, shadcn/ui) actually solve it.
@@ -35,6 +48,15 @@ No step is finished until:
 3. **Teach-back** — the human explains it back in their own words.
 4. **ADR** — `docs/adr/NNN-*.md`, including the **rejected** options and the
    evidence behind rejecting them.
+
+Not every step produces all four gates — a step with no architectural
+decision to defend doesn't get a fake ADR. Steps 0 and 0.5 are teach-back
+only (scaffolding and CI have no rejected-options case to make). Step 1
+(RADIO writeup) and Step 7 (loading/empty/error a11y) are grill + build +
+teach-back, no dedicated ADR — their reasoning lives in the docs they
+produce. Step 8's "why TanStack Query earns its slot on exactly one write
+path" is a real decision and should get its own ADR when that step lands —
+it doesn't have one yet.
 
 ## Architecture decisions already settled
 
