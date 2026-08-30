@@ -9,4 +9,8 @@
 //   Step 3 → export { DataTable } from "./DataTable";
 //   Step 5 → export { resolveWidths } from "./resolve-widths";
 
-export {};
+export {
+  type ColumnDef,
+  createColumnHelper,
+  type DataTableProps,
+} from "./types";
