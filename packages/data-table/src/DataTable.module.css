@@ -1,0 +1,25 @@
+.alignStart {
+  text-align: start;
+}
+.alignCenter {
+  text-align: center;
+}
+.alignEnd {
+  text-align: end;
+}
+
+.overflowTruncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.overflowClip {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+.overflowWrap {
+  white-space: normal;
+}
