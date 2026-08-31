@@ -5,7 +5,7 @@ const FLEX_MIN_WIDTH_FLOOR = 100; // fallback when a flex column sets no minWidt
 
 function resolveColumnWidths<Row, Value>(
   columns: ColumnDef<Row, Value>[],
-  containerWidth: number,
+  containerWidth: number | null,
 ): Record<string, number> {
   const fixedColumns = columns.filter(isFixedWidthColumn);
   const flexColumns = columns.filter(isFlexColumn);
@@ -23,7 +23,8 @@ function resolveColumnWidths<Row, Value>(
     totalFixedWidth += clampedWidth;
   }
 
-  let remainder = containerWidth - totalFixedWidth;
+  let remainder =
+    containerWidth === null ? -1 : containerWidth - totalFixedWidth;
 
   // Step 2: fixed columns alone already fill (or exceed) the container —
   // flex columns fall back to their own floor, table scrolls horizontally.

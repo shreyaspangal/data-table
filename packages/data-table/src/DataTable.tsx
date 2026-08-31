@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import styles from "./DataTable.module.css";
+import { resolveColumnWidths } from "./resolve-widths";
 import type { DataTableProps } from "./types";
 
 export function DataTable<Row>(props: DataTableProps<Row>) {
@@ -24,18 +26,42 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
     data: hasData && !loading && !errorState,
   };
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      setContainerWidth(entries?.[0]?.contentRect.width ?? null);
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const resolvedWidths = resolveColumnWidths(columns, containerWidth); // real measurement in hand
+
   return (
     <div
       className={styles.scrollContainer}
       style={{
         height: height ?? "auto",
       }}
+      ref={containerRef}
     >
       <table
+        className={styles.table}
         aria-label={!caption ? ariaLabel : undefined}
         aria-labelledby={!caption ? ariaLabelledBy : undefined}
       >
         {caption && <caption>{caption}</caption>}
+        <colgroup>
+          {columns.map((column) => (
+            <col
+              key={column.key}
+              style={{ width: resolvedWidths[column.key] }}
+            />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             {columns.map((column) => {
@@ -48,11 +74,6 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                   scope="col"
                   key={column.key}
                   className={styles.stickyHeader}
-                  style={{
-                    ...("width" in column && { width: column.width }),
-                    minWidth: column.minWidth,
-                    maxWidth: column.maxWidth,
-                  }}
                 >
                   {headerContent}
                 </th>
@@ -112,11 +133,6 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                       <td
                         key={column.key}
                         className={`${computedAlignClass} ${computedOverflowClass}`}
-                        style={{
-                          ...("width" in column && { width: column.width }),
-                          minWidth: column.minWidth,
-                          maxWidth: column.maxWidth,
-                        }}
                       >
                         {cellContent}
                       </td>
