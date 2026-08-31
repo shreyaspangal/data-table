@@ -23,3 +23,16 @@
 .overflowWrap {
   white-space: normal;
 }
+
+.scrollContainer {
+  overflow: auto;
+}
+
+.stickyHeader {
+  --color: rgb(222, 211, 211);
+  position: sticky;
+  top: 0;
+  background: var(--color);
+  z-index: 1;
+  border-bottom: 1px solid #000000;
+}

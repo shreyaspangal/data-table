@@ -14,6 +14,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
     emptyState,
     errorState,
     loading,
+    height,
   } = props;
   const hasData = rows.length > 0;
   const state = {
@@ -24,7 +25,12 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
   };
 
   return (
-    <div>
+    <div
+      className={styles.scrollContainer}
+      style={{
+        height: height ?? "auto",
+      }}
+    >
       <table
         aria-label={!caption ? ariaLabel : undefined}
         aria-labelledby={!caption ? ariaLabelledBy : undefined}
@@ -41,6 +47,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                 <th
                   scope="col"
                   key={column.key}
+                  className={styles.stickyHeader}
                   style={{
                     ...("width" in column && { width: column.width }),
                     minWidth: column.minWidth,
