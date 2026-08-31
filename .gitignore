@@ -34,6 +34,9 @@ blob-report/
 **/tests/__screenshots__/
 **/.vitest-attachments/
 
+# playwright MCP scratch output (manual dev-server checks)
+.playwright-mcp/
+
 # claude code local overrides
 .claude/settings.local.json
 .claude/skills/
