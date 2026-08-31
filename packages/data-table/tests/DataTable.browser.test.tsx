@@ -234,3 +234,62 @@ test("keeps the header pinned to the scroll container's top while the body scrol
     isFlushWithContainerTop(header.getBoundingClientRect().top, containerTop),
   ).toBe(true);
 });
+
+// Step 5's own gate: header width === body width for every column. This is
+// exactly what a single <colgroup> shared by <thead> and <tbody> is supposed
+// to guarantee structurally — this test is what turns that guarantee into
+// something checked, not just asserted. Real layout only, hence tier 2.
+test("resolved column widths match between header and body, for both fixed and flex columns", async () => {
+  const widthColumnHelper = createColumnHelper<Row>();
+  const mixedColumns = [
+    widthColumnHelper.accessor((row) => row.id, {
+      key: "id",
+      header: "ID",
+      width: 80,
+    }),
+    widthColumnHelper.accessor((row) => row.name, {
+      key: "name",
+      header: "Name",
+      flex: 2,
+      minWidth: 100,
+    }),
+    widthColumnHelper.accessor((row) => row.count, {
+      key: "count",
+      header: "Count",
+      flex: 1,
+    }),
+  ];
+
+  const screen = await render(
+    <DataTable
+      rows={rows}
+      columns={mixedColumns}
+      getRowId={(row) => row.id}
+      ariaLabel="Width test table"
+    />,
+  );
+
+  const table = screen.getByRole("table").element();
+  const headers = Array.from(table.querySelectorAll("th"));
+  const firstBodyRow = table.querySelector("tbody tr");
+  if (!firstBodyRow) throw new Error("expected at least one data row");
+  const cells = Array.from(firstBodyRow.querySelectorAll("td"));
+
+  expect(headers).toHaveLength(mixedColumns.length);
+  expect(cells).toHaveLength(mixedColumns.length);
+
+  // ResizeObserver's first callback is async relative to React's render, so
+  // the very first paint still reflects the "not measured yet" fallback
+  // (every flex column floored). Wait for the real measurement to land
+  // before asserting exact numbers — otherwise this is flaky depending on
+  // how fast the observer fires relative to when we read the DOM.
+  await expect
+    .poll(() => headers[0]?.getBoundingClientRect().width)
+    .toBeCloseTo(80, 1);
+
+  for (let i = 0; i < mixedColumns.length; i++) {
+    const headerWidth = headers[i]?.getBoundingClientRect().width;
+    const cellWidth = cells[i]?.getBoundingClientRect().width;
+    expect(headerWidth).toBeCloseTo(cellWidth as number, 1);
+  }
+});
