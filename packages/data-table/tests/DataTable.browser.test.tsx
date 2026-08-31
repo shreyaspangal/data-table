@@ -174,3 +174,63 @@ test("shows emptyState when there are no rows, not loading, and no error", async
 
   expect(screen.getByText("Nothing here").element()).toBeTruthy();
 });
+
+// Step 4's own gate: scroll programmatically and assert the header stays
+// pinned. Impossible in jsdom (no layout engine, position: sticky is a no-op
+// there) — this is exactly why this project has no jsdom tier.
+test("keeps the header pinned to the scroll container's top while the body scrolls", async () => {
+  const manyRows: Row[] = Array.from({ length: 50 }, (_, i) => ({
+    id: String(i),
+    name: `Row ${i}`,
+    count: i,
+  }));
+
+  const screen = await render(
+    <DataTable
+      rows={manyRows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      ariaLabel="Test table"
+      height={200}
+    />,
+  );
+
+  const table = screen.getByRole("table").element();
+  const scrollContainer = table.parentElement as HTMLElement;
+  const header = screen.getByRole("columnheader", { name: "Name" }).element();
+  const firstDataCell = screen.getByRole("cell", { name: "Row 0" }).element();
+
+  // Sanity check: the container is actually shorter than its content, so a
+  // scroll can meaningfully happen at all.
+  expect(scrollContainer.scrollHeight).toBeGreaterThan(
+    scrollContainer.clientHeight,
+  );
+
+  // A couple of pixels' slack accounts for the browser's default table
+  // border-spacing — not a claim about pixel-perfect alignment.
+  const isFlushWithContainerTop = (top: number, containerTop: number) =>
+    Math.abs(top - containerTop) <= 5;
+
+  const containerTop = scrollContainer.getBoundingClientRect().top;
+  // No caption/anything else above the header here, so it starts flush
+  // against the container's top edge.
+  expect(
+    isFlushWithContainerTop(header.getBoundingClientRect().top, containerTop),
+  ).toBe(true);
+  const firstDataCellTopBefore = firstDataCell.getBoundingClientRect().top;
+
+  scrollContainer.scrollTop = 300;
+
+  // The scroll actually happened, and moved real content out of its
+  // original position...
+  expect(scrollContainer.scrollTop).toBeGreaterThan(0);
+  expect(firstDataCell.getBoundingClientRect().top).not.toBeCloseTo(
+    firstDataCellTopBefore,
+    0,
+  );
+  // ...but the header stayed exactly where it was: this is what "sticky"
+  // means, as opposed to just "the container happens to be short."
+  expect(
+    isFlushWithContainerTop(header.getBoundingClientRect().top, containerTop),
+  ).toBe(true);
+});
