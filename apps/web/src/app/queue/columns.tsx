@@ -1,6 +1,7 @@
 "use client";
 
 import { createColumnHelper } from "@moderation/data-table";
+import { AssigneeAvatar } from "./cells/AssigneeAvatar";
 import { formatRelativeTime } from "./cells/format-relative-time";
 import { SeverityPill } from "./cells/SeverityPill";
 
@@ -77,6 +78,9 @@ export const columns = [
     header: "Assignee",
     flex: 1,
     minWidth: 140,
+    renderCell: (name, row) => (
+      <AssigneeAvatar name={name} avatarUrl={row.assigneeAvatarUrl} />
+    ),
   }),
   columnHelper.accessor((row) => row.reportCount, {
     key: "reportCount",
