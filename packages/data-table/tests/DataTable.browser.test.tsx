@@ -137,7 +137,9 @@ test("shows loading state instead of rows, spanning every column", async () => {
     />,
   );
 
-  const loadingCell = screen.getByText("Loading...").element();
+  const loadingCell = screen
+    .getByRole("cell", { name: "Loading..." })
+    .element();
   expect(loadingCell.getAttribute("colspan")).toBe("2");
   expect(screen.getByRole("cell", { name: "Alice" }).elements()).toHaveLength(
     0,
@@ -155,7 +157,9 @@ test("shows errorState instead of rows when errorState is set and not loading", 
     />,
   );
 
-  expect(screen.getByText("Something went wrong").element()).toBeTruthy();
+  expect(
+    screen.getByRole("cell", { name: "Something went wrong" }).element(),
+  ).toBeTruthy();
   expect(screen.getByRole("cell", { name: "Alice" }).elements()).toHaveLength(
     0,
   );
@@ -172,7 +176,9 @@ test("shows emptyState when there are no rows, not loading, and no error", async
     />,
   );
 
-  expect(screen.getByText("Nothing here").element()).toBeTruthy();
+  expect(
+    screen.getByRole("cell", { name: "Nothing here" }).element(),
+  ).toBeTruthy();
 });
 
 // Step 4's own gate: scroll programmatically and assert the header stays
@@ -292,4 +298,61 @@ test("resolved column widths match between header and body, for both fixed and f
     const cellWidth = cells[i]?.getBoundingClientRect().width;
     expect(headerWidth).toBeCloseTo(cellWidth as number, 1);
   }
+});
+
+// Step 7's own gate: aria-busy on the scroll container, plus a persistent
+// role="status" live region carrying the same message shown visually — not
+// just the visible <td>, which alone would never proactively announce
+// anything to a screen reader user.
+test("marks the scroll container aria-busy and announces the loading message via a live region", async () => {
+  const screen = await render(
+    <DataTable
+      rows={rows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      loading
+      caption="Test table"
+    />,
+  );
+
+  const table = screen.getByRole("table").element();
+  const scrollContainer = table.parentElement as HTMLElement;
+  expect(scrollContainer.getAttribute("aria-busy")).toBe("true");
+
+  expect(screen.getByRole("status").element().textContent).toBe("Loading...");
+});
+
+test("live region is empty when the table has data, and not aria-busy", async () => {
+  const screen = await render(
+    <DataTable
+      rows={rows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      caption="Test table"
+    />,
+  );
+
+  const table = screen.getByRole("table").element();
+  const scrollContainer = table.parentElement as HTMLElement;
+  // React omits the attribute for an undefined loading prop rather than
+  // rendering aria-busy="false" -- ARIA's own default for aria-busy is
+  // already false, so an absent attribute is correct, not a gap.
+  expect(scrollContainer.getAttribute("aria-busy")).not.toBe("true");
+  expect(screen.getByRole("status").element().textContent).toBe("");
+});
+
+test("live region announces errorState, matching the visible error cell", async () => {
+  const screen = await render(
+    <DataTable
+      rows={rows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      errorState="Something went wrong"
+      caption="Test table"
+    />,
+  );
+
+  expect(screen.getByRole("status").element().textContent).toBe(
+    "Something went wrong",
+  );
 });
