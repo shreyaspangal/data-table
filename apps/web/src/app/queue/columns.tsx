@@ -2,47 +2,89 @@
 
 import { createColumnHelper } from "@moderation/data-table";
 
+// Deliberately flattened, per the RADIO doc's "flattened read-model" note:
+// this mirrors reports joined with moderators, shaped for how the table
+// renders it, not the raw normalized schema (assigneeId stays a real join
+// at the query layer once Step 8 wires the DB — this fixture just names
+// the shape that join produces).
 export type QueueRow = {
   id: string;
-  title: string;
-  status: "pending" | "approved" | "rejected";
-  assignee: string;
-  createdAt: string;
+  reference: string;
+  reporterName: string;
+  reporterAvatarUrl: string;
+  contentThumbnailUrl: string;
+  contentExcerpt: string;
+  category:
+    | "spam"
+    | "harassment"
+    | "nudity"
+    | "violence"
+    | "misinformation"
+    | "copyright";
+  severity: "low" | "medium" | "high" | "critical";
+  status: "pending" | "reviewing" | "resolved" | "dismissed";
+  assigneeName: string | null;
+  assigneeAvatarUrl: string | null;
+  reportCount: number;
+  reportedAt: string;
 };
 
 const columnHelper = createColumnHelper<QueueRow>();
 
-// Deliberately mixes fixed and flex columns, and gives one flex column a
-// minWidth that's larger than its fair share — this is the fixture Step 5's
-// resolveColumnWidths needs to actually exercise both branches in a real
-// browser: proportional split, and the iterative floor/redistribution path.
+// No renderers yet — every column falls through to defaultFormatter for now.
+// Renderers (severity pill, avatar, thumbnail, relative time) land one at a
+// time on top of this.
 export const columns = [
-  columnHelper.accessor((row) => row.id, {
-    key: "id",
-    header: "ID",
-    width: 80,
+  columnHelper.accessor((row) => row.reference, {
+    key: "reference",
+    header: "Reference",
+    width: 110,
   }),
-  columnHelper.accessor((row) => row.title, {
-    key: "title",
-    header: "Title",
+  columnHelper.accessor((row) => row.reporterName, {
+    key: "reporter",
+    header: "Reporter",
+    flex: 1,
+    minWidth: 140,
+  }),
+  columnHelper.accessor((row) => row.contentExcerpt, {
+    key: "content",
+    header: "Content",
     flex: 2,
     minWidth: 240,
     overflow: "truncate",
   }),
+  columnHelper.accessor((row) => row.category, {
+    key: "category",
+    header: "Category",
+    width: 130,
+  }),
+  columnHelper.accessor((row) => row.severity, {
+    key: "severity",
+    header: "Severity",
+    width: 100,
+    align: "center",
+  }),
   columnHelper.accessor((row) => row.status, {
     key: "status",
     header: "Status",
-    width: 120,
+    width: 110,
     align: "center",
   }),
-  columnHelper.accessor((row) => row.assignee, {
+  columnHelper.accessor((row) => row.assigneeName, {
     key: "assignee",
     header: "Assignee",
     flex: 1,
+    minWidth: 140,
   }),
-  columnHelper.accessor((row) => row.createdAt, {
-    key: "createdAt",
-    header: "Created",
+  columnHelper.accessor((row) => row.reportCount, {
+    key: "reportCount",
+    header: "Reports",
+    width: 90,
+    align: "end",
+  }),
+  columnHelper.accessor((row) => row.reportedAt, {
+    key: "reportedAt",
+    header: "Reported",
     width: 160,
     align: "end",
   }),
