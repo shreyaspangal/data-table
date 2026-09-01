@@ -41,6 +41,14 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
 
   const resolvedWidths = resolveColumnWidths(columns, containerWidth); // real measurement in hand
 
+  const statusMessage = state.error
+    ? errorState
+    : state.loading
+      ? "Loading..."
+      : state.empty
+        ? emptyState || "No data available"
+        : null;
+
   return (
     <div
       className={styles.scrollContainer}
@@ -48,7 +56,11 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
         height: height ?? "auto",
       }}
       ref={containerRef}
+      aria-busy={state.loading}
     >
+      <span role="status" className={styles.visuallyHidden}>
+        {statusMessage}
+      </span>
       <table
         className={styles.table}
         aria-label={!caption ? ariaLabel : undefined}
