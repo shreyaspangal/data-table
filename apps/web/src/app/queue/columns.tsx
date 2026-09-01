@@ -1,6 +1,7 @@
 "use client";
 
 import { createColumnHelper } from "@moderation/data-table";
+import { formatRelativeTime } from "./cells/format-relative-time";
 
 // Deliberately flattened, per the RADIO doc's "flattened read-model" note:
 // this mirrors reports joined with moderators, shaped for how the table
@@ -31,9 +32,8 @@ export type QueueRow = {
 
 const columnHelper = createColumnHelper<QueueRow>();
 
-// No renderers yet — every column falls through to defaultFormatter for now.
-// Renderers (severity pill, avatar, thumbnail, relative time) land one at a
-// time on top of this.
+// Renderers land one at a time; columns without one fall through to
+// defaultFormatter.
 export const columns = [
   columnHelper.accessor((row) => row.reference, {
     key: "reference",
@@ -87,5 +87,6 @@ export const columns = [
     header: "Reported",
     width: 160,
     align: "end",
+    renderCell: (value) => formatRelativeTime(value),
   }),
 ];
