@@ -2,6 +2,7 @@
 
 import { createColumnHelper } from "@moderation/data-table";
 import { formatRelativeTime } from "./cells/format-relative-time";
+import { SeverityPill } from "./cells/SeverityPill";
 
 // Deliberately flattened, per the RADIO doc's "flattened read-model" note:
 // this mirrors reports joined with moderators, shaped for how the table
@@ -63,6 +64,7 @@ export const columns = [
     header: "Severity",
     width: 100,
     align: "center",
+    renderCell: (value) => <SeverityPill severity={value} />,
   }),
   columnHelper.accessor((row) => row.status, {
     key: "status",
