@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./DataTable.module.css";
+import { defaultFormatter } from "./helpers";
 import { resolveColumnWidths } from "./resolve-widths";
 import type { DataTableProps } from "./types";
 
@@ -112,7 +113,7 @@ export function DataTable<Row>(props: DataTableProps<Row>) {
                     const cellValue = column.accessor(row);
                     const cellContent = column.renderCell
                       ? column.renderCell(cellValue, row)
-                      : cellValue;
+                      : defaultFormatter(cellValue);
 
                     const alignClass = {
                       start: styles.alignStart,
