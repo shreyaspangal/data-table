@@ -2,6 +2,7 @@
 
 import { createColumnHelper } from "@moderation/data-table";
 import { AssigneeAvatar } from "./cells/AssigneeAvatar";
+import { ContentPreview } from "./cells/ContentPreview";
 import { formatRelativeTime } from "./cells/format-relative-time";
 import { SeverityPill } from "./cells/SeverityPill";
 
@@ -54,6 +55,12 @@ export const columns = [
     flex: 2,
     minWidth: 240,
     overflow: "truncate",
+    renderCell: (excerpt, row) => (
+      <ContentPreview
+        thumbnailUrl={row.contentThumbnailUrl}
+        excerpt={excerpt}
+      />
+    ),
   }),
   columnHelper.accessor((row) => row.category, {
     key: "category",
